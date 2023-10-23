@@ -257,6 +257,10 @@ network read_network()
   	return Alarm;
 }
 
+network display_graph(){
+	
+
+}
 
 int main()
 {
