@@ -116,7 +116,7 @@ public:
 // get the node at nth index
     list<Graph_Node>::iterator get_nth_node(int n)
     {
-       list<Graph_Node>::iterator listIt;
+    	list<Graph_Node>::iterator listIt;
         int count=0;
         for(listIt=Pres_Graph.begin();listIt!=Pres_Graph.end();listIt++)
         {
@@ -258,8 +258,7 @@ network read_network()
 }
 
 network display_graph(){
-	
-
+	return;
 }
 
 int main()
@@ -269,7 +268,7 @@ int main()
     
 // Example: to do something
 	cout<<"Perfect! Hurrah! \n";
-	
+	return 0;
 }
 
 
