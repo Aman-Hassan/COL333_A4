@@ -15,14 +15,19 @@ time since it has to traverse through entire graph list -> why not make it index
 
 class network{
 public:
-    map<string,int> Name_ind; //Mapping for the name of node to index
-    map<int,string> ind_Name; //Mapping for index to Name of node (incase ever needed)
-    // vector<string> Nodes; //Names of the nodes
-    vector<map<string,int>> Values; // Contains the category-value pairs that a particular node can take -> will be useful while trying to update CPT (for index in CPT)
-    vector<int> nValues; //number of values a node can take -> basically Values[i].size()
-    vector<vector<int>> Children; //index of all children of a particular node
-    vector<vector<int>> Parents; //index of all parents of a particular node
-    vector<vector<double>> CPT; //The entire cpt table ordered according to index of node
+    map<string, int> Name_ind; // Mapping for the name of node to index
+	unordered_map<int, string> ind_Name; // Mapping for index to Name of node (incase ever needed)
+	// vector<string> Nodes; //Names of the nodes
+	vector<map<string, int>> Values; // Contains the category-value pairs that a particular node can take -> will be useful while trying to update CPT (for index in CPT)
+	vector<int> nValues;			 // number of values a node can take -> basically Values[i].size()
+	vector<vector<int>> Children;	 // index of all children of a particular node
+	vector<vector<int>> Parents;	 // index of all parents of a particular node
+	vector<vector<double>> CPT;		 // The entire cpt table ordered according to index of node
+	vector<double> probabilities;
+	vector<vector<int>> data; //
+	vector<vector<int>> all_possible_data;
+	vector<int> missing_idx; 
+
 
     network() {
         Name_ind.clear();
