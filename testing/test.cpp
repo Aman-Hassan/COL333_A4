@@ -10,6 +10,8 @@
 // Format checker just assumes you have Alarm.bif and Solved_Alarm.bif (your file) in current directory
 using namespace std;
 
+double sampling_constant 0.0001;
+
 /* In the given starter code accessing a node given the name or its index seems to return and iterator and takes
 time since it has to traverse through entire graph list -> why not make it index based?*/
 
@@ -211,6 +213,18 @@ public:
 // ? Parameters to class would prbly be .dat file and pointer to network class instance
 // ? Class should also have function for expectation, maximisation
 
+int prob_index(vector<int> val_vec, vector<int> size_vec)
+{
+	int a = 0;
+	int b = 1;
+	for (int i = size_vec.size() - 1; i >= 0; i--)
+	{
+		a += b * val_vec[i];
+		b *= size_vec[i];
+	}
+	return a;
+}
+
 void expectation(network &medical)
 {
 	medical.probabilities.clear();
@@ -244,25 +258,61 @@ void expectation(network &medical)
 					}
 					int a = 0;
 					int b = 0;
-					num  *= medical.CPT[a][b]; // Need to update
+					num *= medical.CPT[medical.Children[missing_idx][j]][prob_index(val_vec, size_vec)];
 				}
 				den += num;
 				val_vec.clear();
 				size_vec.clear();
 				val_vec.push_back(s);
 				size_vec.push_back(N_missing);
-				for(int j = 0;j<medical.Parents[missing_idx].size();j++)
+				for (int j = 0; j < medical.Parents[missing_idx].size(); j++)
 				{
 					val_vec.push_back(temp[medical.Parents[missing_idx][j]]);
 					size_vec.push_back(medical.nValues[medical.Parents[missing_idx][j]]);
 				}
-				num *= CPT[a][b]; // Need to update
+				num *= CPT[missing_idx][prob_index(val_vec, size_vec)];
 				all_poss_prob.push_back(num);
 			}
-			for(int j = 0;j<all_poss_prob.size();j++)
+			for (int j = 0; j < all_poss_prob.size(); j++)
 			{
-				medical.probabilities.push_back(all_poss_prob[j]/den);
+				medical.probabilities.push_back(all_poss_prob[j] / den);
 			}
+		}
+	}
+}
+
+void maximization(network &medical)
+{
+	for (int i = 0; i < medical.CPT.size(); i++)
+	{
+		vector<int> val_vec;
+		vector<int> size_vec;
+		int sz = medical.CPT[i].size() / medical.nValues[i];
+		vector<double> denom(sz, 0.0), numer(medical.CPT[i].size(), 0.0);
+		size_vec.push_back(medical.nValues[i]);
+		for (int j = 0; j < medical.Parents[i].size(); j++)
+		{
+			size_vec.push_back(medical.nValues(medical.Parents[i][j]));
+		}
+		for (int j = 0; j < medical.all_possible_data.size(); j++)
+		{
+			val_vec.clear();
+			val_vec.push_back(i);
+			for (int k = 0; k < medical.Parents[i].size(); k++)
+			{
+				val_vec.push_back(medical.all_possible_data[j][medical.Parents[i][k]]);
+			}
+			int idx = prob_index(val_vec, size_vec);
+			denom[idx % sz] += medical.probabilities[j];
+			numer[idx] += medical.probabilities[j];
+		}
+		double probab;
+		for (int j = 0; j < medical.CPT[i].size(); j++)
+		{
+			probab = (numer[j] + sampling_constant) / (denom[j % sz] + sampling_constant * (medical.nValues[i]));
+			if (probab < sampling_constant)
+				probab = sampling_constant;
+			medical.CPT[i][j] = probab;
 		}
 	}
 }
