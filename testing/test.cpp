@@ -382,6 +382,6 @@ int main(int argc, char *argv[])
 	}
 	network medical;
 	medical.read_network(argv[1]);
-	medical.read_data(argv[2])
+	medical.read_data(argv[2]);
 	// medical.view_network();
 }
