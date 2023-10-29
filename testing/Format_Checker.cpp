@@ -211,7 +211,6 @@ void check_format()
                     string::size_type sz;
      				while(temp.compare(";")!=0)
      				{
-
                         if(!atof(test_temp.c_str()))
                         {
                             cout<<" Probem in Probab values in line "<<line_count<<"\n";

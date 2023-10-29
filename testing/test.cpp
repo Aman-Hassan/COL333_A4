@@ -5,6 +5,7 @@
 #include <fstream>
 #include <sstream>
 #include <cstdlib>
+#include <iomanip>
 #include <unordered_map>
 
 // Format checker just assumes you have Alarm.bif and Solved_Alarm.bif (your file) in current directory
@@ -219,6 +220,50 @@ public:
 			file.close();
 	}
 
+	// * For writing into solved_alarm.bif
+	void write_network(const std::string &filename)
+	{
+		ifstream alarm(filename);
+		ofstream solved_alarm("solved_alarm.bif");
+		string temp;
+		if (alarm.is_open() && solved_alarm.is_open()) {
+			string line;
+			getline(alarm,line);
+			while (!alarm.eof()) {
+				solved_alarm << line << endl;
+				stringstream ss;
+				ss.str(line);
+				ss>>temp;
+				if (temp.compare("probability")==0) {
+					ss>>temp; //contains the "("
+                    ss>>temp; //contains the present node name
+					int node_index = Name_ind[temp]; //contains index to nodename
+					getline(alarm,line);
+					stringstream ss1;
+					ss1.str(line);
+					ss1>>temp; //the word "table"
+					solved_alarm << "\t" << temp << " ";
+					vector<double> var_cpt = CPT[node_index];
+					for (int i=0;i<var_cpt.size();i++){
+						if (var_cpt[i] < 0.0001){
+							solved_alarm << 0.0001 << " ";
+						}
+						else{
+							solved_alarm << std::fixed << setprecision(5) <<var_cpt[i] << " ";
+						}
+					}
+					solved_alarm << ";" << endl;
+				}
+				getline(alarm,line);
+			}
+			alarm.close();
+			solved_alarm.close();
+        cout << "File has been modified and saved as " << "solved_alarm.bif" << endl;
+		} else {
+			cerr << "Error opening files!" << endl;
+		}
+	}
+
 	// * For checking the network intialized
 	void view_network()
 	{
@@ -383,8 +428,8 @@ void maximization(network &medical)
 		for (int j = 0; j < medical.CPT[i].size(); j++)
 		{
 			probab = (numer[j] + sampling_constant) / (denom[j % sz] + sampling_constant * (medical.nValues[i]));
-			if (probab < sampling_constant)
-				probab = sampling_constant;
+			// if (probab < sampling_constant)
+			// 	probab = sampling_constant;
 			medical.CPT[i][j] = probab;
 		}
 	}
@@ -415,8 +460,8 @@ int main(int argc, char *argv[])
 	while (j--)
 	{
 		expectation(medical);
-		cout << j << endl;
+		// cout << j << endl;
 		maximization(medical);
 	}
-	// medical.view_network();
+	medical.write_network(argv[1]);
 }
