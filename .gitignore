@@ -34,3 +34,5 @@
 # VS-code Workspaces
 *.code-workspace
 .vscode/
+
+*/trial.cpp

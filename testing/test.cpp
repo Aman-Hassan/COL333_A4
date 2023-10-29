@@ -10,7 +10,7 @@
 // Format checker just assumes you have Alarm.bif and Solved_Alarm.bif (your file) in current directory
 using namespace std;
 
-double sampling_constant 0.0001;
+double sampling_constant = 0.0001;
 
 /* In the given starter code accessing a node given the name or its index seems to return and iterator and takes
 time since it has to traverse through entire graph list -> why not make it index based?*/
@@ -18,9 +18,10 @@ time since it has to traverse through entire graph list -> why not make it index
 class network
 {
 public:
-	vector<int> Name_ind;				 // Mapping for the name of node to index
+	unordered_map<string,int> Name_ind;				 // Mapping for the name of node to index
 	unordered_map<int, string> ind_Name; // Mapping for index to Name of node (incase ever needed)
 	// vector<string> Nodes; //Names of the nodes
+    vector<map<string,int>> cat_val; // Contains the category-value pairs that a particular node can take -> will be useful while trying to update CPT (for index in CPT)
 	vector<vector<string>> Values; // Contains the category-value pairs that a particular node can take -> will be useful while trying to update CPT (for index in CPT)
 	vector<int> nValues;		   // number of values a node can take -> basically Values[i].size()
 	vector<vector<int>> Children;  // index of all children of a particular node
@@ -51,6 +52,7 @@ public:
 		string temp;
 		string name;
 		map<string, int> category_val;
+		vector<string> vals;
 		int index = 0;
 		if (file.is_open())
 		{
@@ -77,16 +79,19 @@ public:
 						ss2 >> temp;
 					}
 					category_val.clear();
+					vals.clear();
 					int val = 0;
 					while (temp.compare("};") != 0)
 					{
 						category_val.emplace(temp, val);
+						vals.push_back(temp);
 						val++;
 						ss2 >> temp;
 					}
 					Name_ind.emplace(name, index);
 					ind_Name.emplace(index, name);
-					Values[index] = category_val;
+                    cat_val[index] = category_val;
+					Values[index] = vals;
 					nValues[index] = val;
 					index += 1;
 					// Graph_Node new_node(name,values.size(),values);
@@ -149,6 +154,58 @@ public:
 		return;
 	}
 
+	// * For reading the .dat file
+	void read_data(const std::string& filename){
+        ifstream file(filename);
+        string line;
+        vector<int> vals(37); //corersponding values for categories of current line
+        // vector<string> cats(37); //corresponding categories of current line
+        int find=0;
+        string temp;
+        string name;
+        map<string,int> category_val;
+        if (file.is_open())
+        {
+            while (! file.eof() )
+            {
+                vals.clear();
+                // cats.clear();
+                stringstream ss;
+                getline (file,line); // Each line in the .dat file
+                ss.str(line);
+                int index = 0; //store the value where the missing value occurs in a line
+                int missing_idx = -1;
+                while(ss>>temp){ // Each word in the particular line
+                    if (temp.compare("\"?\"")==0){
+                        vals[index] = -1;
+                        // cats[index] = "?";
+                        missing_idx = index;
+                    }
+                    else{
+                        vals[index] = cat_val[index][temp]; //Add the value of the category of a node to vals
+                        // cats[index] = temp;
+                        // missing_idx_list.push_back(-1);
+                    }
+                    index ++;
+                }
+                missing_idx_list.push_back(missing_idx);
+                all_possible_data.push_back(vals);
+				if (missing_idx!=-1){
+					for (int i=0;i<nValues[missing_idx];i++){
+						vals[missing_idx]=i;
+						sample.push_back(vals);
+					}
+				}
+				else{
+					sample.push_back(vals);
+				}
+                // data_cat.push_back(cats);
+            }
+        }
+        if(find==1)
+        file.close();
+    }
+
 	// * For checking the network intialized
 	void view_network()
 	{
@@ -163,7 +220,7 @@ public:
 		{
 			for (const auto &entry : vec)
 			{
-				std::cout << " " << entry.first << ": " << entry.second;
+				std::cout << entry << " ";
 			}
 			std::cout << std::endl;
 		}
@@ -247,14 +304,14 @@ void expectation(network &medical)
 				vector<int> current_sample(medical.sample.begin(), medical.sample.end());
 				current_sample[missing_idx] = s;
 				vector<int> val_vec, size_vec;
-				for (j = 0; j < medical.Children[missing_idx].size(); j++)
+				for (int j = 0; j < medical.Children[missing_idx].size(); j++)
 				{
 					val_vec.push_back(current_sample[medical.Children[missing_idx][j]]);
 					size_vec.push_back(medical.nValues[medical.Children[missing_idx][j]]);
 					for (int p = 0; p < medical.Parents[medical.Children[missing_idx][j]].size(); p++)
 					{
 						val_vec.push_back(current_sample[medical.Parents[medical.Children[missing_idx][j]][p]]);
-						val_size.push_back(medical.nValues[medical.Parents[medical.Children[missing_idx][j]][k]]);
+						size_vec.push_back(medical.nValues[medical.Parents[medical.Children[missing_idx][j]][p]]);
 					}
 					int a = 0;
 					int b = 0;
@@ -267,10 +324,10 @@ void expectation(network &medical)
 				size_vec.push_back(N_missing);
 				for (int j = 0; j < medical.Parents[missing_idx].size(); j++)
 				{
-					val_vec.push_back(temp[medical.Parents[missing_idx][j]]);
+					val_vec.push_back(current_sample[medical.Parents[missing_idx][j]]);
 					size_vec.push_back(medical.nValues[medical.Parents[missing_idx][j]]);
 				}
-				num *= CPT[missing_idx][prob_index(val_vec, size_vec)];
+				num *= medical.CPT[missing_idx][prob_index(val_vec, size_vec)];
 				all_poss_prob.push_back(num);
 			}
 			for (int j = 0; j < all_poss_prob.size(); j++)
@@ -292,7 +349,7 @@ void maximization(network &medical)
 		size_vec.push_back(medical.nValues[i]);
 		for (int j = 0; j < medical.Parents[i].size(); j++)
 		{
-			size_vec.push_back(medical.nValues(medical.Parents[i][j]));
+			size_vec.push_back(medical.nValues[medical.Parents[i][j]]);
 		}
 		for (int j = 0; j < medical.all_possible_data.size(); j++)
 		{
@@ -325,5 +382,6 @@ int main(int argc, char *argv[])
 	}
 	network medical;
 	medical.read_network(argv[1]);
-	medical.view_network();
+	medical.read_data(argv[2])
+	// medical.view_network();
 }
