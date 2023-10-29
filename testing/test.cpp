@@ -5,13 +5,14 @@
 #include <fstream>
 #include <sstream>
 #include <cstdlib>
-#include <iomanip>
 #include <unordered_map>
-
+#include <iomanip>
+#include <algorithm>
+#include <vector>
 // Format checker just assumes you have Alarm.bif and Solved_Alarm.bif (your file) in current directory
 using namespace std;
 
-double sampling_constant = 0.0001;
+double sampling_constant = 0.0035;
 
 /* In the given starter code accessing a node given the name or its index seems to return and iterator and takes
 time since it has to traverse through entire graph list -> why not make it index based?*/
@@ -32,6 +33,7 @@ public:
 	vector<vector<int>> sample; //
 	vector<vector<int>> all_possible_data;
 	vector<int> missing_idx_list;
+	vector<vector<int>> dummy_sample;
 	int number_nodes;
 
 	network()
@@ -193,20 +195,23 @@ public:
 					{
 						// cout<<index<<" "<<vals.size()<<" "<<endl;
 						vals[index] = cat_val[index][temp]; // Add the value of the category of a node to vals
-						// cats[index] = temp;
-						// missing_idx_list.push_back(-1);
+															// cats[index] = temp;
+															// missing_idx_list.push_back(-1);
 					}
 					index++;
 				}
 				missing_idx_list.push_back(missing_idx);
-				// cout<<"vals.size() = "<<vals.size()<<endl;
 				sample.push_back(vals);
 				if (missing_idx != -1)
 				{
+					vals[missing_idx] = 0;
+					dummy_sample.push_back(vals);
 					for (int i = 0; i < nValues[missing_idx]; i++)
 					{
 						vals[missing_idx] = i;
 						all_possible_data.push_back(vals);
+						// cout<<sample[sample.size()-1][missing_idx]<<endl;
+						// cout<<dummy_sample[dummy_sample.size()-1][missing_idx]<<endl;
 					}
 				}
 				else
@@ -219,48 +224,44 @@ public:
 		if (find == 1)
 			file.close();
 	}
-
-	// * For writing into solved_alarm.bif
-	void write_network(const std::string &filename)
+	void write_network(string filename)
 	{
-		ifstream alarm(filename);
-		ofstream solved_alarm("solved_alarm.bif");
-		string temp;
-		if (alarm.is_open() && solved_alarm.is_open()) {
-			string line;
-			getline(alarm,line);
-			while (!alarm.eof()) {
-				solved_alarm << line << endl;
+		ifstream myfile(filename);
+		ofstream outfile;
+		outfile.open("solved_alarm.bif");
+		outfile << setprecision(4) << fixed;
+		string line, temp, name;
+		int counter = 0;
+		if (myfile.is_open())
+		{
+			while (!myfile.eof())
+			{
 				stringstream ss;
+				getline(myfile, line);
 				ss.str(line);
-				ss>>temp;
-				if (temp.compare("probability")==0) {
-					ss>>temp; //contains the "("
-                    ss>>temp; //contains the present node name
-					int node_index = Name_ind[temp]; //contains index to nodename
-					getline(alarm,line);
-					stringstream ss1;
-					ss1.str(line);
-					ss1>>temp; //the word "table"
-					solved_alarm << "\t" << temp << " ";
-					vector<double> var_cpt = CPT[node_index];
-					for (int i=0;i<var_cpt.size();i++){
-						if (var_cpt[i] < 0.0001){
-							solved_alarm << 0.0001 << " ";
-						}
-						else{
-							solved_alarm << std::fixed << setprecision(5) <<var_cpt[i] << " ";
-						}
+				ss >> temp;
+				if (temp.compare("probability") == 0)
+				{
+					outfile << line << "\n";
+					getline(myfile, line);
+					outfile << "\ttable ";
+					for (int i = 0; i < CPT[counter].size(); i++){
+						if(CPT[counter][i]<0.0001) CPT[counter][i] =0.0001;
+						outfile << CPT[counter][i] << " ";
 					}
-					solved_alarm << ";" << endl;
+					outfile << " ;\n";
+					counter++;
 				}
-				getline(alarm,line);
+				else
+				{
+					if (line.size() != 0)
+						outfile << line << "\n";
+					else
+						outfile << line;
+				}
 			}
-			alarm.close();
-			solved_alarm.close();
-        cout << "File has been modified and saved as " << "solved_alarm.bif" << endl;
-		} else {
-			cerr << "Error opening files!" << endl;
+			myfile.close();
+			outfile.close();
 		}
 	}
 
@@ -340,6 +341,20 @@ int prob_index(vector<int> val_vec, vector<int> size_vec)
 	return a;
 }
 
+double probab(int idx,int node,int value,network & medical)
+{
+	vector<int> size_vec;
+	vector<int> val_vec;
+	val_vec.push_back(value);
+	size_vec.push_back(medical.nValues[node]);
+	for(int i = 0;i<medical.Parents[node].size();i++)
+	{
+		val_vec.push_back(medical.sample[idx][medical.Parents[node][i]]);
+		size_vec.push_back(medical.nValues[medical.Parents[node][i]]);
+	}
+	return medical.CPT[node][prob_index(val_vec,size_vec)];
+}
+
 void expectation(network &medical)
 {
 	medical.probabilities.clear();
@@ -353,47 +368,26 @@ void expectation(network &medical)
 		else
 		{
 			int N_missing = medical.nValues[missing_idx];
-			double num = 0.0;
-			double den = 0.0;
+			double total = 0.0;
 			vector<double> all_poss_prob;
 			for (int s = 0; s < N_missing; s++)
 			{
 				// cout<<missing_idx<<endl;
-				num = 1.0;
-				vector<int> current_sample(medical.sample[i].begin(), medical.sample[i].end());
-				current_sample[missing_idx] = s;
-				vector<int> val_vec, size_vec;
+				double p1 = probab(i,missing_idx,s,medical);
 				for (int j = 0; j < medical.Children[missing_idx].size(); j++)
 				{
-					val_vec.clear();
-					size_vec.clear();
-					val_vec.push_back(current_sample[medical.Children[missing_idx][j]]);
-					size_vec.push_back(medical.nValues[medical.Children[missing_idx][j]]);
-					for (int p = 0; p < medical.Parents[medical.Children[missing_idx][j]].size(); p++)
-					{
-						val_vec.push_back(current_sample[medical.Parents[medical.Children[missing_idx][j]][p]]);
-						size_vec.push_back(medical.nValues[medical.Parents[medical.Children[missing_idx][j]][p]]);
-					}
-					int a = 0;
-					int b = 0;
-					num *= medical.CPT[medical.Children[missing_idx][j]][prob_index(val_vec, size_vec)];
+					medical.sample[i][missing_idx] = s;
+					double p2 = probab(i,medical.Children[missing_idx][j],medical.sample[i][medical.Children[missing_idx][j]],medical);
+					p1 *= p2;
 				}
-				den += num;
-				val_vec.clear();
-				size_vec.clear();
-				val_vec.push_back(s);
-				size_vec.push_back(N_missing);
-				for (int j = 0; j < medical.Parents[missing_idx].size(); j++)
-				{
-					val_vec.push_back(current_sample[medical.Parents[missing_idx][j]]);
-					size_vec.push_back(medical.nValues[medical.Parents[missing_idx][j]]);
-				}
-				num *= medical.CPT[missing_idx][prob_index(val_vec, size_vec)];
-				all_poss_prob.push_back(num);
+				total += p1 ;
+				all_poss_prob.push_back(p1);
 			}
+			int req_idx = std::distance(all_poss_prob.begin(), std::max_element(all_poss_prob.begin(), all_poss_prob.end()));
+			medical.sample[i][missing_idx] = req_idx;
 			for (int j = 0; j < all_poss_prob.size(); j++)
 			{
-				medical.probabilities.push_back(all_poss_prob[j] / den);
+				medical.probabilities.push_back(all_poss_prob[j] / total);
 			}
 		}
 	}
@@ -406,12 +400,13 @@ void maximization(network &medical)
 		vector<int> val_vec;
 		vector<int> size_vec;
 		int sz = medical.CPT[i].size() / medical.nValues[i];
-		vector<double> denom(sz, 0.0), numer(medical.CPT[i].size(), 0.0);
+		medical.CPT[i] = vector<double>(medical.CPT[i].size(),sampling_constant);
 		size_vec.push_back(medical.nValues[i]);
 		for (int j = 0; j < medical.Parents[i].size(); j++)
 		{
 			size_vec.push_back(medical.nValues[medical.Parents[i][j]]);
 		}
+		vector<double> denom(sz, medical.nValues[i]* sampling_constant);
 		for (int j = 0; j < medical.all_possible_data.size(); j++)
 		{
 			val_vec.clear();
@@ -421,29 +416,62 @@ void maximization(network &medical)
 				val_vec.push_back(medical.all_possible_data[j][medical.Parents[i][k]]);
 			}
 			int idx = prob_index(val_vec, size_vec);
-			denom[idx % sz] += medical.probabilities[j];
-			numer[idx] += medical.probabilities[j];
+			// denom[idx % sz] += medical.probabilities[j];
+			// numer[idx] += medical.probabilities[j];
+			medical.CPT[i][idx] += medical.probabilities[j];
+			denom[idx %sz] += medical.probabilities[j];
 		}
 		double probab;
 		for (int j = 0; j < medical.CPT[i].size(); j++)
 		{
-			probab = (numer[j] + sampling_constant) / (denom[j % sz] + sampling_constant * (medical.nValues[i]));
-			// if (probab < sampling_constant)
-			// 	probab = sampling_constant;
-			medical.CPT[i][j] = probab;
+			if(denom[j%sz] == 0) medical.CPT[i][j] = 0.0;
+			else medical.CPT[i][j] /= denom[j%sz];
 		}
 	}
 }
 
 void init_CPT(network &medical)
 {
-	for (int i = 0; i < medical.number_nodes; i++)
+	for (int i = 0; i < medical.CPT.size(); i++)
 	{
+		vector<int> val_vec;
+		vector<int> size_vec;
+		int sz = medical.CPT[i].size() / medical.nValues[i];
+		vector<double> denom(sz, 0.0), numer(medical.CPT[i].size(), 0.0);
+		size_vec.push_back(medical.nValues[i]);
+		for (int j = 0; j < medical.Parents[i].size(); j++)
+		{
+			size_vec.push_back(medical.nValues[medical.Parents[i][j]]);
+		}
+		for (int j = 0; j < medical.dummy_sample.size(); j++)
+		{
+			val_vec.clear();
+			val_vec.push_back(medical.dummy_sample[j][i]);
+			for (int k = 0; k < medical.Parents[i].size(); k++)
+			{
+				val_vec.push_back(medical.dummy_sample[j][medical.Parents[i][k]]);
+			}
+			int idx = prob_index(val_vec, size_vec);
+			
+			denom[idx % sz] += 1;
+			numer[idx] += 1;
+		}
+		double probab;
 		for (int j = 0; j < medical.CPT[i].size(); j++)
 		{
-			medical.CPT[i][j] = 1.0 / medical.nValues[i];
+			probab = (numer[j] + sampling_constant) / (denom[j % sz] + sampling_constant * (medical.nValues[i]));
+			if (probab ==0)
+				probab = 0.0;
+			medical.CPT[i][j] = probab;
 		}
 	}
+	// for(int i = 0; i < medical.number_nodes; i++)
+	// 	{
+	// 		for(int j = 0; j < medical.CPT[i].size(); j++)
+	// 		{
+	// 			medical.CPT[i][j] = 1.0/medical.nValues[i];
+	// 		}
+	// 	}
 }
 
 int main(int argc, char *argv[])
@@ -456,12 +484,13 @@ int main(int argc, char *argv[])
 	medical.read_network(argv[1]);
 	medical.read_data(argv[2]);
 	init_CPT(medical);
-	int j = 100;
+	int j = 10;
 	while (j--)
 	{
 		expectation(medical);
-		// cout << j << endl;
+		cout << j << endl;
 		maximization(medical);
 	}
 	medical.write_network(argv[1]);
+	// medical.view_network();
 }
