@@ -35,6 +35,7 @@ public:
 	network()
 	{
 		Name_ind.clear();
+		cat_val.resize(37);
 		Values.resize(37);	 // Set the outer vector to have 37 elements
 		nValues.resize(37);	 // Set the vector of nValues to have 37 elements
 		Children.resize(37); // Set the vector of vectors for Children to have 37 elements
@@ -301,7 +302,7 @@ void expectation(network &medical)
 			for (int s = 0; s < N_missing; s++)
 			{
 				num = 1.0;
-				vector<int> current_sample(medical.sample.begin(), medical.sample.end());
+				vector<int> current_sample(medical.sample[s].begin(), medical.sample[s].end());
 				current_sample[missing_idx] = s;
 				vector<int> val_vec, size_vec;
 				for (int j = 0; j < medical.Children[missing_idx].size(); j++)
