@@ -18,19 +18,20 @@ time since it has to traverse through entire graph list -> why not make it index
 class network
 {
 public:
-	unordered_map<string,int> Name_ind;				 // Mapping for the name of node to index
+	unordered_map<string, int> Name_ind; // Mapping for the name of node to index
 	unordered_map<int, string> ind_Name; // Mapping for index to Name of node (incase ever needed)
-	// vector<string> Nodes; //Names of the nodes
-    vector<map<string,int>> cat_val; // Contains the category-value pairs that a particular node can take -> will be useful while trying to update CPT (for index in CPT)
-	vector<vector<string>> Values; // Contains the category-value pairs that a particular node can take -> will be useful while trying to update CPT (for index in CPT)
-	vector<int> nValues;		   // number of values a node can take -> basically Values[i].size()
-	vector<vector<int>> Children;  // index of all children of a particular node
-	vector<vector<int>> Parents;   // index of all parents of a particular node
-	vector<vector<double>> CPT;	   // The entire cpt table ordered according to index of node
+										 // vector<string> Nodes; //Names of the nodes
+	vector<map<string, int>> cat_val;	 // Contains the category-value pairs that a particular node can take -> will be useful while trying to update CPT (for index in CPT)
+	vector<vector<string>> Values;		 // Contains the category-value pairs that a particular node can take -> will be useful while trying to update CPT (for index in CPT)
+	vector<int> nValues;				 // number of values a node can take -> basically Values[i].size()
+	vector<vector<int>> Children;		 // index of all children of a particular node
+	vector<vector<int>> Parents;		 // index of all parents of a particular node
+	vector<vector<double>> CPT;			 // The entire cpt table ordered according to index of node
 	vector<double> probabilities;
 	vector<vector<int>> sample; //
 	vector<vector<int>> all_possible_data;
 	vector<int> missing_idx_list;
+	int number_nodes;
 
 	network()
 	{
@@ -42,6 +43,7 @@ public:
 		Parents.resize(37);	 // Set the vector of vectors for Parents to have 37 elements
 		CPT.resize(37);		 // Set the vector of vectors for CPT to have 37 elements
 							 // Now all the vectors will have 37 elements initially
+		number_nodes = 0;
 	}
 
 	// * reads the .bif file and intitializes Name_ind, parents, children, cpt
@@ -91,7 +93,7 @@ public:
 					}
 					Name_ind.emplace(name, index);
 					ind_Name.emplace(index, name);
-                    cat_val[index] = category_val;
+					cat_val[index] = category_val;
 					Values[index] = vals;
 					nValues[index] = val;
 					index += 1;
@@ -151,61 +153,71 @@ public:
 			if (find == 1)
 				file.close();
 		}
-
+		number_nodes = index;
 		return;
 	}
 
 	// * For reading the .dat file
-	void read_data(const std::string& filename){
-        ifstream file(filename);
-        string line;
-        vector<int> vals(37); //corersponding values for categories of current line
-        // vector<string> cats(37); //corresponding categories of current line
-        int find=0;
-        string temp;
-        string name;
-        map<string,int> category_val;
-        if (file.is_open())
-        {
-            while (! file.eof() )
-            {
-                vals.clear();
-                // cats.clear();
-                stringstream ss;
-                getline (file,line); // Each line in the .dat file
-                ss.str(line);
-                int index = 0; //store the value where the missing value occurs in a line
-                int missing_idx = -1;
-                while(ss>>temp){ // Each word in the particular line
-                    if (temp.compare("\"?\"")==0){
-                        vals[index] = -1;
-                        // cats[index] = "?";
-                        missing_idx = index;
-                    }
-                    else{
-                        vals[index] = cat_val[index][temp]; //Add the value of the category of a node to vals
-                        // cats[index] = temp;
-                        // missing_idx_list.push_back(-1);
-                    }
-                    index ++;
-                }
-                missing_idx_list.push_back(missing_idx);
-                all_possible_data.push_back(vals);
-				if (missing_idx!=-1){
-					for (int i=0;i<nValues[missing_idx];i++){
-						vals[missing_idx]=i;
-						sample.push_back(vals);
+	void read_data(const std::string &filename)
+	{
+		ifstream file(filename);
+		string line;
+		vector<int> vals(37); // corersponding values for categories of current line
+		// vector<string> cats(37); //corresponding categories of current line
+		int find = 0;
+		string temp;
+		string name;
+		map<string, int> category_val;
+		if (file.is_open())
+		{
+			while (!file.eof())
+			{
+				// vals.clear();
+				// vals.resize(37);
+				// cats.clear();
+				stringstream ss;
+				getline(file, line); // Each line in the .dat file
+				ss.str(line);
+				int index = 0; // store the value where the missing value occurs in a line
+				int missing_idx = -1;
+				while (ss >> temp)
+				{ // Each word in the particular line
+					if (temp.compare("\"?\"") == 0)
+					{
+						vals[index] = -1;
+						// cats[index] = "?";
+						missing_idx = index;
+					}
+					else
+					{
+						// cout<<index<<" "<<vals.size()<<" "<<endl;
+						vals[index] = cat_val[index][temp]; // Add the value of the category of a node to vals
+						// cats[index] = temp;
+						// missing_idx_list.push_back(-1);
+					}
+					index++;
+				}
+				missing_idx_list.push_back(missing_idx);
+				// cout<<"vals.size() = "<<vals.size()<<endl;
+				sample.push_back(vals);
+				if (missing_idx != -1)
+				{
+					for (int i = 0; i < nValues[missing_idx]; i++)
+					{
+						vals[missing_idx] = i;
+						all_possible_data.push_back(vals);
 					}
 				}
-				else{
-					sample.push_back(vals);
+				else
+				{
+					all_possible_data.push_back(vals);
 				}
-                // data_cat.push_back(cats);
-            }
-        }
-        if(find==1)
-        file.close();
-    }
+				// data_cat.push_back(cats);
+			}
+		}
+		if (find == 1)
+			file.close();
+	}
 
 	// * For checking the network intialized
 	void view_network()
@@ -301,12 +313,15 @@ void expectation(network &medical)
 			vector<double> all_poss_prob;
 			for (int s = 0; s < N_missing; s++)
 			{
+				// cout<<missing_idx<<endl;
 				num = 1.0;
-				vector<int> current_sample(medical.sample[s].begin(), medical.sample[s].end());
+				vector<int> current_sample(medical.sample[i].begin(), medical.sample[i].end());
 				current_sample[missing_idx] = s;
 				vector<int> val_vec, size_vec;
 				for (int j = 0; j < medical.Children[missing_idx].size(); j++)
 				{
+					val_vec.clear();
+					size_vec.clear();
 					val_vec.push_back(current_sample[medical.Children[missing_idx][j]]);
 					size_vec.push_back(medical.nValues[medical.Children[missing_idx][j]]);
 					for (int p = 0; p < medical.Parents[medical.Children[missing_idx][j]].size(); p++)
@@ -355,7 +370,7 @@ void maximization(network &medical)
 		for (int j = 0; j < medical.all_possible_data.size(); j++)
 		{
 			val_vec.clear();
-			val_vec.push_back(i);
+			val_vec.push_back(medical.all_possible_data[j][i]);
 			for (int k = 0; k < medical.Parents[i].size(); k++)
 			{
 				val_vec.push_back(medical.all_possible_data[j][medical.Parents[i][k]]);
@@ -375,6 +390,17 @@ void maximization(network &medical)
 	}
 }
 
+void init_CPT(network &medical)
+{
+	for (int i = 0; i < medical.number_nodes; i++)
+	{
+		for (int j = 0; j < medical.CPT[i].size(); j++)
+		{
+			medical.CPT[i][j] = 1.0 / medical.nValues[i];
+		}
+	}
+}
+
 int main(int argc, char *argv[])
 {
 	if (argc != 3)
@@ -384,5 +410,13 @@ int main(int argc, char *argv[])
 	network medical;
 	medical.read_network(argv[1]);
 	medical.read_data(argv[2]);
+	init_CPT(medical);
+	int j = 100;
+	while (j--)
+	{
+		expectation(medical);
+		cout << j << endl;
+		maximization(medical);
+	}
 	// medical.view_network();
 }
