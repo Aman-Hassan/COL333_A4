@@ -224,47 +224,50 @@ public:
 		if (find == 1)
 			file.close();
 	}
-	void write_network(string filename)
+	
+	// * For writing into solved_alarm.bif
+	void write_network(const std::string &filename)
 	{
-		ifstream myfile(filename);
-		ofstream outfile;
-		outfile.open("solved_alarm.bif");
-		outfile << setprecision(4) << fixed;
-		string line, temp, name;
-		int counter = 0;
-		if (myfile.is_open())
-		{
-			while (!myfile.eof())
-			{
+		ifstream alarm(filename);
+		ofstream solved_alarm("solved_alarm.bif");
+		string temp;
+		if (alarm.is_open() && solved_alarm.is_open()) {
+			string line;
+			getline(alarm,line);
+			while (!alarm.eof()) {
+				solved_alarm << line << endl;
 				stringstream ss;
-				getline(myfile, line);
 				ss.str(line);
-				ss >> temp;
-				if (temp.compare("probability") == 0)
-				{
-					outfile << line << "\n";
-					getline(myfile, line);
-					outfile << "\ttable ";
-					for (int i = 0; i < CPT[counter].size(); i++){
-						if(CPT[counter][i]<0.0001) CPT[counter][i] =0.0001;
-						outfile << CPT[counter][i] << " ";
+				ss>>temp;
+				if (temp.compare("probability")==0) {
+					ss>>temp; //contains the "("
+                    ss>>temp; //contains the present node name
+					int node_index = Name_ind[temp]; //contains index to nodename
+					getline(alarm,line);
+					stringstream ss1;
+					ss1.str(line);
+					ss1>>temp; //the word "table"
+					solved_alarm << "\t" << temp << " ";
+					vector<double> var_cpt = CPT[node_index];
+					for (int i=0;i<var_cpt.size();i++){
+						if (var_cpt[i] < 0.0001){
+							solved_alarm << 0.0001 << " ";
+						}
+						else{
+							solved_alarm << std::fixed << setprecision(4) <<var_cpt[i] << " ";
+						}
 					}
-					outfile << " ;\n";
-					counter++;
+					solved_alarm << ";" << endl;
 				}
-				else
-				{
-					if (line.size() != 0)
-						outfile << line << "\n";
-					else
-						outfile << line;
-				}
+				getline(alarm,line);
 			}
-			myfile.close();
-			outfile.close();
+			alarm.close();
+			solved_alarm.close();
+        cout << "File has been modified and saved as " << "solved_alarm.bif" << endl;
+		} else {
+			cerr << "Error opening files!" << endl;
 		}
 	}
-
 	// * For checking the network intialized
 	void view_network()
 	{
