@@ -35,4 +35,4 @@
 *.code-workspace
 .vscode/
 
-*/trial.cpp
+# */trial.cpp
