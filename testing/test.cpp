@@ -502,7 +502,7 @@ int main(int argc, char *argv[])
     {
         cerr << "Missing .bif file and/or datafile" << endl;
     }
-    const int time_limit_seconds = 118;
+    const int time_limit_seconds = 115;
     auto start_time = std::chrono::high_resolution_clock::now();
     network medical;
     medical.read_network(argv[1]);
