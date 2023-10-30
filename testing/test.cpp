@@ -9,6 +9,7 @@
 #include <iomanip>
 #include <algorithm>
 #include <vector>
+#include <chrono>
 // Format checker just assumes you have Alarm.bif and Solved_Alarm.bif (your file) in current directory
 using namespace std;
 
@@ -224,8 +225,6 @@ public:
 		if (find == 1)
 			file.close();
 	}
-	
-	// * For writing into solved_alarm.bif
 	void write_network(const std::string &filename)
 	{
 		ifstream alarm(filename);
@@ -268,6 +267,7 @@ public:
 			cerr << "Error opening files!" << endl;
 		}
 	}
+
 	// * For checking the network intialized
 	void view_network()
 	{
@@ -483,17 +483,27 @@ int main(int argc, char *argv[])
 	{
 		cerr << "Missing .bif file and/or datafile" << endl;
 	}
+    const int time_limit_seconds = 20;
+    auto start_time = std::chrono::high_resolution_clock::now();
 	network medical;
 	medical.read_network(argv[1]);
 	medical.read_data(argv[2]);
 	init_CPT(medical);
-	int j = 10;
-	while (j--)
+	int j = 0;
+	while (true)
 	{
+        auto current_time = std::chrono::high_resolution_clock::now();
+        auto elapsed_seconds = std::chrono::duration_cast<std::chrono::seconds>(current_time - start_time);
+
+        if (elapsed_seconds.count() >= time_limit_seconds) {
+            // Time limit exceeded, exit the loop
+            break;
+        }
 		expectation(medical);
-		cout << j << endl;
 		maximization(medical);
+        j++;
 	}
+    cout<<"Number of Iterations "<<j<<endl;
 	medical.write_network(argv[1]);
 	// medical.view_network();
 }
